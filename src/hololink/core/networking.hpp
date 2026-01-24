@@ -21,6 +21,7 @@
 #include <unistd.h> // for close()
 
 #include <array>
+#include <cstdint>
 #include <memory>
 #include <stdexcept>
 #include <string>

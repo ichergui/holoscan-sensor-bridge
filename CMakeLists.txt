@@ -25,6 +25,9 @@ option(HOLOLINK_BUILD_ARGUS_ISP "Build Argus ISP support" OFF)
 option(HOLOLINK_BUILD_SIPL "Build NvSIPL capture components" OFF)
 option(HOLOLINK_BUILD_EMULATOR "Build HSB Emulator components" ON)
 option(HOLOLINK_BUILD_FUSA "Build NvFusa capture components" OFF)
+option(HOLOLINK_BUILD_ROCE "Build Hololink with RoCE support" OFF)
+option(HOLOLINK_BUILD_COE "Build Hololink with CoE support" ON)
+option(HOLOLINK_BUILD_SOCKET "Build Hololink with Linux Socket support" OFF)
 
 if (HOLOLINK_BUILD_PYTHON AND NOT HOLOLINK_BUILD_EMULATOR)
   message(FATAL_ERROR "If building Python bindings, HOLOLINK_BUILD_EMULATOR must be ON")
@@ -50,6 +53,10 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 include(hololink_deps/fmt)
 
 if (NOT HOLOLINK_BUILD_ONLY_NATIVE)
+  find_package(nvtx3 3.3.0 REQUIRED)
+  find_package(rapids_logger 0.2.0 REQUIRED)
+  find_package(rmm 25.10.0 REQUIRED)
+  find_package(Eigen3 REQUIRED)
   # Find Holoscan
   find_package(holoscan 3.6 REQUIRED CONFIG PATHS "/opt/nvidia/holoscan")
 

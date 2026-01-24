@@ -74,6 +74,7 @@ ConfigureTest(
     hololink::operators::iq_enc
 )
 
+if (HOLOLINK_BUILD_ROCE)
 ConfigureTest(
     signal_generator_test
   SOURCES
@@ -89,3 +90,4 @@ ConfigureTest(
   LINK_LIBRARIES
     hololink::operators::roce_transmitter
 )
+endif() # HOLOLINK_BUILD_ROCE

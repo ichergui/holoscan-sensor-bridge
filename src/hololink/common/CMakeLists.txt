@@ -13,14 +13,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-find_package(ibverbs REQUIRED)
+if (HOLOLINK_BUILD_ROCE)
+  find_package(ibverbs REQUIRED)
 
-add_library(hololink STATIC
-  gui_renderer.cpp
-  holoargs.cpp
-  cuda_helper.cpp
-  tools.cpp
-  )
+  add_library(hololink STATIC
+    gui_renderer.cpp
+    holoargs.cpp
+    cuda_helper.cpp
+    tools.cpp
+    )
+else()
+  add_library(hololink STATIC
+    gui_renderer.cpp
+    holoargs.cpp
+    cuda_helper.cpp
+    )
+endif() # HOLOLINK_BUILD_ROCE
 
 set_property(TARGET hololink PROPERTY POSITION_INDEPENDENT_CODE ON)
 
@@ -30,27 +38,49 @@ target_include_directories(hololink
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
   )
 
+target_include_directories(hololink
+  PUBLIC
+    ${IMGUI_SOURCE_DIR}
+)
+
 if(TARGET CUDA::nvtx3)
   set(CUDA_NVTX_TARGET CUDA::nvtx3)
 else()
   set(CUDA_NVTX_TARGET CUDA::nvToolsExt)
 endif()
 
-target_link_libraries(hololink
-  PRIVATE
-    holoscan::core
+if (HOLOLINK_BUILD_ROCE)
+  target_link_libraries(hololink
+    PRIVATE
+      holoscan::core
 
-    # Required by the gui_renderer
-    holoscan::viz
-    holoscan::viz::imgui
-    ${ibverbs_LIBRARIES}
-  PUBLIC
-    hololink::core
-    CUDA::cuda_driver
-    CUDA::nvrtc
-    ${CUDA_NVTX_TARGET}
-    fmt::fmt-header-only
-  )
+      # Required by the gui_renderer
+      holoscan::viz
+      holoscan::viz::imgui
+      ${ibverbs_LIBRARIES}
+    PUBLIC
+      hololink::core
+      CUDA::cuda_driver
+      CUDA::nvrtc
+      ${CUDA_NVTX_TARGET}
+      fmt::fmt-header-only
+    )
+else()
+  target_link_libraries(hololink
+    PRIVATE
+      holoscan::core
+
+      # Required by the gui_renderer
+      holoscan::viz
+      holoscan::viz::imgui
+    PUBLIC
+      hololink::core
+      CUDA::cuda_driver
+      CUDA::nvrtc
+      ${CUDA_NVTX_TARGET}
+      fmt::fmt-header-only
+    )
+endif() # HOLOLINK_BUILD_ROCE
 
 # Installation of the hololink library
 set_target_properties(hololink PROPERTIES EXPORT_NAME common)
