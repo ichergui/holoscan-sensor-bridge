@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: Copyright (c) 2024-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * SPDX-FileCopyrightText: Copyright (c) 2024-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,198 +16,13 @@
  */
 
 #include "image_processor.hpp"
+#include "image_processor_kernels.cuh"
 
 #include <hololink/common/cuda_helper.hpp>
 #include <hololink/core/logging_internal.hpp>
 #include <holoscan/holoscan.hpp>
 
 namespace {
-
-const char* source = R"(
-#include <device_atomic_functions.h>
-#include <cooperative_groups.h>
-
-extern "C" {
-
-// bayer component offsets
-__inline__ __device__ unsigned int getBayerOffset(unsigned int x, unsigned int y)
-{
-    const unsigned int offsets[2][2]{{X0Y0_OFFSET, X1Y0_OFFSET}, {X0Y1_OFFSET, X1Y1_OFFSET}};
-    return offsets[y & 1][x & 1];
-}
-
-/**
- * Apply black level correction.
- *
- * @param image [in] pointer to input image
- * @param components_per_line [in] components per input image line (width * 3 for RGB)
- * @param height [in] height of the input image
- */
-__global__ void applyBlackLevel(unsigned short *image,
-                                int components_per_line,
-                                int height)
-{
-    int idx_x = blockIdx.x * blockDim.x + threadIdx.x;
-    int idx_y = blockIdx.y * blockDim.y + threadIdx.y;
-
-    if ((idx_x >= components_per_line) || (idx_y >= height))
-        return;
-
-    const int index = idx_y * components_per_line + idx_x;
-
-    // subtract optical black and clamp
-    float value = max(float(image[index]) - OPTICAL_BLACK, 0.f);
-    // fix white level
-    const float range = (1 << (sizeof(unsigned short) * 8)) - 1;
-    value *= range / (range - float(OPTICAL_BLACK));
-    image[index] = (unsigned short)(value + 0.5f);
-}
-
-/**
- * Calculate the histogram of an image.
- *
- * Based on the Cuda SDK histogram256 sample.
- *
- * First each warp of a thread builds a sub-histogram in shared memory. Then the per-warp
- * sub-histograms are merged per block and written to global memory using atomics.
- *
- * Note, this kernel needs HISTOGRAM_THREADBLOCK_MEMORY bytes of shared
- * memory.
- *
- * @param in [in] pointer to image data
- * @param histogram [in] pointer to the histogram data (must be able to hold HISTOGRAM_BIN_COUNT values)
- * @param width [in] width of the image
- * @param height [in] height of the image
- */
-__global__ void histogram(const unsigned short *in,
-                          unsigned int *histogram,
-                          unsigned int width,
-                          unsigned int height)
-{
-    uint2 index = make_uint2(blockIdx.x * blockDim.x + threadIdx.x, blockIdx.y * blockDim.y + threadIdx.y);
-    if (index.y >= height)
-    {
-        return;
-    }
-
-    // per-warp subhistogram storage
-    __shared__ unsigned int s_hist[HISTOGRAM_THREADBLOCK_MEMORY / sizeof(unsigned int)];
-
-    // clear shared memory storage for current threadblock before processing
-    if (threadIdx.y == 0)
-    {
-#pragma unroll
-        for (int i = 0; i < ((HISTOGRAM_THREADBLOCK_MEMORY / sizeof(unsigned int)) / HISTOGRAM_THREADBLOCK_SIZE); ++i)
-        {
-            s_hist[threadIdx.x + i * HISTOGRAM_THREADBLOCK_SIZE] = 0;
-        }
-    }
-
-    // handle to thread block group
-    cooperative_groups::thread_block cta = cooperative_groups::this_thread_block();
-
-    cooperative_groups::sync(cta);
-
-    // cycle through the entire data set, update subhistograms for each warp
-    unsigned int *const s_warp_hist = s_hist + (threadIdx.x >> LOG2_WARP_SIZE) * HISTOGRAM_BIN_COUNT * CHANNELS;
-    while (index.x < width)
-    {
-        // take the upper 8 bits
-        const unsigned char bin = ((unsigned char*)&in[index.y * width + index.x])[1];
-        atomicAdd(s_warp_hist + bin + getBayerOffset(index.x, index.y) * HISTOGRAM_BIN_COUNT, 1u);
-        index.x += blockDim.x * gridDim.x;
-    }
-
-    // Merge per-warp histograms into per-block and write to global memory
-    cooperative_groups::sync(cta);
-
-    if (threadIdx.y == 0)
-    {
-        for (int bin = threadIdx.x; bin < HISTOGRAM_BIN_COUNT * CHANNELS; bin += HISTOGRAM_THREADBLOCK_SIZE)
-        {
-            unsigned int sum = 0;
-
-#pragma unroll
-            for (int i = 0; i < HISTOGRAM_WARP_COUNT; ++i)
-            {
-                sum += s_hist[bin + i * HISTOGRAM_BIN_COUNT * CHANNELS];
-            }
-
-            atomicAdd(&histogram[bin], sum);
-        }
-    }
-}
-
-/**
- * Calculate the white balance gains using the per channel histograms
- *
- * @param histogram [in] pointer to histogram data (HISTOGRAM_BIN_COUNT * CHANNELS values)
- * @param gains [in] pointer to the white balance gains (CHANNELS values)
- */
-__global__ void calcWBGains(const unsigned int *histogram,
-                            float *gains)
-{
-    unsigned long long int average[CHANNELS];
-    unsigned long long int max_gain = 0;
-    for (int channel = 0; channel < CHANNELS; ++channel)
-    {
-        unsigned long long int value = 0.f;
-        for (int bin = 1; bin < HISTOGRAM_BIN_COUNT; ++bin)
-        {
-            value += histogram[channel * HISTOGRAM_BIN_COUNT + bin] * bin;
-        }
-        if (channel == 1)
-        {
-            // there are two green channels in the image which both are counted
-            // in one histogram therefore divide green channel by 2
-            value /= 2;
-        }
-        max_gain = max(max_gain, value);
-        average[channel] = max(value, 1ull);
-    }
-
-    for (int channel = 0; channel < CHANNELS; ++channel)
-    {
-        gains[channel] = float(max_gain) / float(average[channel]);
-    }
-}
-
-/**
- * Apply white balance gains.
- *
- * @param in [in] pointer to image
- * @param width [in] width of the image
- * @param height [in] height of the image
- * @param gains [in] pointer to the white balance gains (CHANNELS values)
- */
-__global__ void applyOperations(unsigned short *image,
-                             int width,
-                             int height,
-                             const float *gains)
-{
-    int idx_x = blockIdx.x * blockDim.x + threadIdx.x;
-    int idx_y = blockIdx.y * blockDim.y + threadIdx.y;
-
-    if ((idx_x >= width) || (idx_y >= height))
-        return;
-
-    const int index = idx_y * width + idx_x;
-
-    float value = (float)(image[index]);
-
-    // apply gain
-    const unsigned int channel = getBayerOffset(idx_x, idx_y);
-    value *= gains[channel];
-
-    const float range = (1 << (sizeof(unsigned short) * 8)) - 1;
-
-    // clamp
-    value = max(min(value, range), 0.f);
-
-    image[index] = (unsigned short)(value + 0.5f);
-}
-
-})";
 
 // 3 channels (RGB)
 constexpr auto CHANNELS = 3;
@@ -217,6 +32,8 @@ constexpr auto HISTOGRAM_BIN_COUNT = 256;
 } // anonymous namespace
 
 namespace hololink::operators {
+
+ImageProcessorOp::~ImageProcessorOp() = default;
 
 void ImageProcessorOp::setup(holoscan::OperatorSpec& spec)
 {
@@ -304,19 +121,20 @@ void ImageProcessorOp::start()
         throw std::runtime_error(fmt::format("Camera bayer format {} not supported.", int(bayer_format_.get())));
     }
 
-    cuda_function_launcher_.reset(new hololink::common::CudaFunctionLauncher(
-        source, { "applyBlackLevel", "histogram", "calcWBGains", "applyOperations" },
-        { fmt::format("-D CHANNELS={}", CHANNELS),
-            fmt::format("-D X0Y0_OFFSET={}", x0y0_offset),
-            fmt::format("-D X1Y0_OFFSET={}", x1y0_offset),
-            fmt::format("-D X0Y1_OFFSET={}", x0y1_offset),
-            fmt::format("-D X1Y1_OFFSET={}", x1y1_offset),
-            fmt::format("-D HISTOGRAM_BIN_COUNT={}", HISTOGRAM_BIN_COUNT),
-            fmt::format("-D LOG2_WARP_SIZE={}", log2_warp_size),
-            fmt::format("-D HISTOGRAM_WARP_COUNT={}", histogram_warp_count),
-            fmt::format("-D HISTOGRAM_THREADBLOCK_SIZE={}", histogram_threadblock_size_),
-            fmt::format("-D HISTOGRAM_THREADBLOCK_MEMORY={}", histogram_threadblock_memory),
-            fmt::format("-D OPTICAL_BLACK={}", optical_black_.get() * (1 << least_significant_bit)) }));
+    // Initialize kernel configuration
+    kernel_config_.reset(new hololink::operators::kernels::KernelConfig{
+        x0y0_offset,
+        x1y0_offset,
+        x0y1_offset,
+        x1y1_offset,
+        static_cast<unsigned int>(optical_black_.get() * (1 << least_significant_bit)),
+        HISTOGRAM_BIN_COUNT,
+        histogram_threadblock_size_,
+        static_cast<unsigned int>(histogram_threadblock_memory),
+        log2_warp_size,
+        static_cast<unsigned int>(histogram_warp_count),
+        CHANNELS
+    });
 
     white_balance_gains_memory_.reset([] {
         CUdeviceptr mem = 0;
@@ -329,8 +147,9 @@ void ImageProcessorOp::stop()
 {
     hololink::common::CudaContextScopedPush cur_cuda_context(cuda_context_);
 
-    cuda_function_launcher_.reset();
+    kernel_config_.reset();
     histogram_memory_.reset();
+    white_balance_gains_memory_.reset();
 
     CudaCheck(cuDevicePrimaryCtxRelease(cuda_device_));
     cuda_context_ = nullptr;
@@ -389,35 +208,36 @@ void ImageProcessorOp::compute(holoscan::InputContext& input, holoscan::OutputCo
 
     // apply optical black if set
     if (optical_black_ != 0.f) {
-        cuda_function_launcher_->launch(
-            "applyBlackLevel",
-            { width, height, 1 },
-            cuda_stream,
-            input_tensor->pointer(), width, height);
+        hololink::operators::kernels::launchApplyBlackLevel(
+            reinterpret_cast<unsigned short*>(input_tensor->pointer()),
+            width, height,
+            kernel_config_->optical_black,
+            *kernel_config_,
+            cuda_stream);
     }
 
     // apply Grey World White Balance algorithm
     CudaCheck(cuMemsetD32Async(histogram_memory_.get(), 0, CHANNELS * HISTOGRAM_BIN_COUNT, cuda_stream));
-    cuda_function_launcher_->launch(
-        "histogram",
-        { width, height, 1 },
-        { histogram_threadblock_size_, 2, 1 },
-        cuda_stream,
-        input_tensor->pointer(), histogram_memory_.get(), width, height);
+    hololink::operators::kernels::launchHistogram(
+        reinterpret_cast<const unsigned short*>(input_tensor->pointer()),
+        reinterpret_cast<unsigned int*>(static_cast<CUdeviceptr>(histogram_memory_.get())),
+        width, height,
+        *kernel_config_,
+        cuda_stream);
 
     // calculate white balance gains
-    cuda_function_launcher_->launch(
-        "calcWBGains",
-        { 1, 1, 1 },
-        { 1, 1, 1 },
-        cuda_stream,
-        histogram_memory_.get(), white_balance_gains_memory_.get());
+    hololink::operators::kernels::launchCalcWBGains(
+        reinterpret_cast<unsigned int*>(static_cast<CUdeviceptr>(histogram_memory_.get())),
+        reinterpret_cast<float*>(static_cast<CUdeviceptr>(white_balance_gains_memory_.get())),
+        *kernel_config_,
+        cuda_stream);
 
-    cuda_function_launcher_->launch(
-        "applyOperations",
-        { width, height, 1 },
-        cuda_stream,
-        input_tensor->pointer(), width, height, white_balance_gains_memory_.get());
+    hololink::operators::kernels::launchApplyOperations(
+        reinterpret_cast<unsigned short*>(input_tensor->pointer()),
+        width, height,
+        reinterpret_cast<const float*>(static_cast<CUdeviceptr>(white_balance_gains_memory_.get())),
+        *kernel_config_,
+        cuda_stream);
 
     // pass the CUDA stream to the output message
     auto out_message = nvidia::gxf::Expected<nvidia::gxf::Entity>(entity);

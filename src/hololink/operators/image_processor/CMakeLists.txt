@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2024-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,9 +17,13 @@
 # statically
 add_library(image_processor STATIC
   image_processor.cpp
+  image_processor_kernels.cu
   )
 
 set_property(TARGET image_processor PROPERTY POSITION_INDEPENDENT_CODE ON)
+
+# Set CUDA properties for the kernels
+set_source_files_properties(image_processor_kernels.cu PROPERTIES LANGUAGE CUDA)
 
 add_library(hololink::operators::image_processor ALIAS image_processor)
 
