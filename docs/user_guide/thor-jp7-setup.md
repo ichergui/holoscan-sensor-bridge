@@ -51,9 +51,9 @@ The installation steps **above** are not required if JP7.0.0 was installed using
 
 ```none
   EN0=mgbe0_0
-  sudo nmcli con add con-name hololink-$EN0 ifname $EN0 type ethernet ip4 192.168.0.101/24
-  sudo nmcli connection modify hololink-$EN0 +ipv4.routes 192.168.0.2/32
-  sudo nmcli connection up hololink-$EN0
+  sudo ip link set dev $EN0 up
+  sudo ip addr add 192.168.0.101/24 dev $EN0
+  sudo ip route add 192.168.0.2/32 dev $EN0
 ```
 
 - Retrieve your camera's MAC ID with the `hololink-enumerate` command:
