@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,14 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-find_package(ibverbs REQUIRED)
 
-add_library(hololink STATIC
-  gui_renderer.cpp
-  holoargs.cpp
-  cuda_helper.cpp
-  tools.cpp
-  )
+add_library(hololink STATIC)
+
+target_sources(hololink
+  PRIVATE
+    gui_renderer.cpp
+    holoargs.cpp
+    cuda_helper.cpp
+    $<$<BOOL:${HOLOLINK_BUILD_ROCE}>:tools.cpp>
+)
+
+if (HOLOLINK_BUILD_ROCE)
+  find_package(ibverbs REQUIRED)
+endif()
 
 set_property(TARGET hololink PROPERTY POSITION_INDEPENDENT_CODE ON)
 
@@ -43,7 +49,6 @@ target_link_libraries(hololink
     # Required by the gui_renderer
     holoscan::viz
     holoscan::viz::imgui
-    ${ibverbs_LIBRARIES}
   PUBLIC
     hololink::core
     CUDA::cuda_driver
@@ -51,6 +56,10 @@ target_link_libraries(hololink
     ${CUDA_NVTX_TARGET}
     fmt::fmt-header-only
   )
+
+if (HOLOLINK_BUILD_ROCE)
+  target_link_libraries(hololink PRIVATE ${ibverbs_LIBRARIES})
+endif() # HOLOLINK_BUILD_ROCE
 
 # Installation of the hololink library
 set_target_properties(hololink PROPERTIES EXPORT_NAME common)

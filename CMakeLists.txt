@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2024-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2024-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,8 @@ option(HOLOLINK_BUILD_ARGUS_ISP "Build Argus ISP support" OFF)
 option(HOLOLINK_BUILD_SIPL "Build NvSIPL capture components" OFF)
 option(HOLOLINK_BUILD_EMULATOR "Build HSB Emulator components" ON)
 option(HOLOLINK_BUILD_FUSA "Build NvFusa capture components" OFF)
+option(HOLOLINK_BUILD_ROCE "Build Hololink with RoCE support" ON)
+option(HOLOLINK_BUILD_SOCKET "Build Hololink with Linux Socket support" ON)
 
 if (HOLOLINK_BUILD_PYTHON AND NOT HOLOLINK_BUILD_EMULATOR)
   message(FATAL_ERROR "If building Python bindings, HOLOLINK_BUILD_EMULATOR must be ON")
