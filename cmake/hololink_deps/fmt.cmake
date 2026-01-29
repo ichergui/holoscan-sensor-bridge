@@ -4,7 +4,7 @@
 # version (either via CMake config or header discovery).
 
 include_guard(GLOBAL)
-set(HOLOLINK_FMT_VERSION "10.1.1")
+set(HOLOLINK_FMT_VERSION "12.1.0")
 
 # Already exists?
 if(TARGET fmt::fmt-header-only)

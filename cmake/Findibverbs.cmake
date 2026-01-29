@@ -1,5 +1,5 @@
 
-# SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2024-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,18 +14,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-include(FindPackageHandleStandardArgs)
+if (HOLOLINK_BUILD_ROCE)
+  include(FindPackageHandleStandardArgs)
 
-find_path(ibverbs_INCLUDE_DIRS
-  NAMES infiniband/verbs.h
-  )
+  find_path(ibverbs_INCLUDE_DIRS
+    NAMES infiniband/verbs.h
+    )
 
-find_library(ibverbs_LIBRARIES
-  NAMES ibverbs
-  )
+  find_library(ibverbs_LIBRARIES
+    NAMES ibverbs
+    )
 
-find_package_handle_standard_args(ibverbs DEFAULT_MSG
-  ibverbs_LIBRARIES ibverbs_INCLUDE_DIRS
-  )
+  find_package_handle_standard_args(ibverbs DEFAULT_MSG
+    ibverbs_LIBRARIES ibverbs_INCLUDE_DIRS
+    )
 
-mark_as_advanced(ibverbs_INCLUDE_DIRS ibverbs_LIBRARIES)
+  mark_as_advanced(ibverbs_INCLUDE_DIRS ibverbs_LIBRARIES)
+endif() # HOLOLINK_BUILD_ROCE

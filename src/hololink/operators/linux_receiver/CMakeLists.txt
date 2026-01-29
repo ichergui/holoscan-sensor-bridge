@@ -27,12 +27,20 @@ set_property(TARGET linux_receiver_op PROPERTY POSITION_INDEPENDENT_CODE ON)
 add_library(hololink::operators::linux_receiver ALIAS linux_receiver)
 add_library(hololink::operators::linux_receiver_op ALIAS linux_receiver_op)
 
-target_include_directories(linux_receiver
-  INTERFACE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-    ${ibverbs_INCLUDE_DIRS}
-  )
+if (HOLOLINK_BUILD_ROCE)
+  target_include_directories(linux_receiver
+    INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+        ${ibverbs_INCLUDE_DIRS}
+    )
+else()
+  target_include_directories(linux_receiver
+    INTERFACE
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
+      $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    )
+endif() # HOLOLINK_BUILD_ROCE
 
 target_include_directories(linux_receiver_op
   INTERFACE

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: Copyright (c) 2024-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-FileCopyrightText: Copyright (c) 2024-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,16 +23,18 @@ if(HOLOLINK_BUILD_FUSA)
   add_subdirectory(fusa_coe_capture)
 endif()
 add_subdirectory(image_processor)
-add_subdirectory(iq_dec)
-add_subdirectory(iq_enc)
 add_subdirectory(linux_receiver)
 add_subdirectory(linux_receiver_op)
 add_subdirectory(linux_coe_receiver)
 add_subdirectory(packed_format_converter)
+if (HOLOLINK_BUILD_ROCE)
+add_subdirectory(iq_dec)
+add_subdirectory(iq_enc)
 add_subdirectory(roce_receiver)
 add_subdirectory(roce_transmitter)
 add_subdirectory(sig_gen)
 add_subdirectory(sig_viewer)
+endif() # HOLOLINK_BUILD_ROCE
 if(HOLOLINK_BUILD_SIPL)
   add_subdirectory(sipl_capture)
 endif()
