@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: Copyright (c) 2023-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * SPDX-FileCopyrightText: Copyright (c) 2023-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +21,7 @@
 #include <memory>
 
 #include <hololink/operators/csi_to_bayer/csi_to_bayer.hpp>
+#include <hololink/operators/image_processor/image_processor_kernels.cuh>
 
 #include <holoscan/core/operator.hpp>
 #include <holoscan/core/parameter.hpp>
@@ -33,6 +34,8 @@ namespace hololink::operators {
 class ImageProcessorOp : public holoscan::Operator {
 public:
     HOLOSCAN_OPERATOR_FORWARD_ARGS(ImageProcessorOp);
+
+    ~ImageProcessorOp() override;
 
     void setup(holoscan::OperatorSpec& spec) override;
     void start() override;
@@ -52,12 +55,11 @@ private:
 
     holoscan::CudaStreamHandler cuda_stream_handler_;
 
-    std::shared_ptr<hololink::common::CudaFunctionLauncher> cuda_function_launcher_;
-
     hololink::common::UniqueCUdeviceptr histogram_memory_;
     hololink::common::UniqueCUdeviceptr white_balance_gains_memory_;
 
     uint32_t histogram_threadblock_size_;
+    std::unique_ptr<hololink::operators::kernels::KernelConfig> kernel_config_;
 };
 
 } // namespace hololink::operators
