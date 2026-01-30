@@ -30,7 +30,12 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#if !defined(USE_INFINIBAND_OPCODE) || USE_INFINIBAND_OPCODE
 #include <infiniband/opcode.h>
+#else
+#define IBV_OPCODE_UC_RDMA_WRITE_ONLY (0x2A)
+#define IBV_OPCODE_UC_RDMA_WRITE_ONLY_WITH_IMMEDIATE (0x2B)
+#endif
 
 #include <hololink/common/cuda_helper.hpp>
 #include <hololink/core/deserializer.hpp>

@@ -28,6 +28,7 @@ add_library(hololink::operators::linux_receiver ALIAS linux_receiver)
 add_library(hololink::operators::linux_receiver_op ALIAS linux_receiver_op)
 
 if (HOLOLINK_BUILD_ROCE)
+  target_compile_definitions(linux_receiver PRIVATE USE_INFINIBAND_OPCODE=1)
   target_include_directories(linux_receiver
     INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
@@ -35,6 +36,7 @@ if (HOLOLINK_BUILD_ROCE)
         ${ibverbs_INCLUDE_DIRS}
     )
 else()
+  target_compile_definitions(linux_receiver PRIVATE USE_INFINIBAND_OPCODE=0)
   target_include_directories(linux_receiver
     INTERFACE
       $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>

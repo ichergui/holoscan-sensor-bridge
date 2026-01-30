@@ -54,18 +54,16 @@ if(HOLOLINK_BUILD_SOCKET)
   set_tests_properties(linux_imx274_player_test PROPERTIES
                         FAIL_REGULAR_EXPRESSION "ERROR;\\[error\\]")
 
-  include(hololink_deps/pybind11)
   target_link_libraries(linux_imx274_player
     PRIVATE
       hololink
       hololink::operators::csi_to_bayer
       hololink::operators::image_processor
       hololink::operators::linux_receiver_op
+      hololink::sensors::native_imx274_camera_sensor
       holoscan::core
       holoscan::ops::bayer_demosaic
       holoscan::ops::holoviz
-      holoscan::pybind11
-      pybind11::embed
     )
 
   list(APPEND EXAMPLE_INSTALL_TARGETS linux_imx274_player)
