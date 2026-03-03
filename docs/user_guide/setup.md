@@ -480,11 +480,22 @@ which is the RJ45 connector on the AGX Orin.
 
 - Enable the network interface and ensure that the camera enumerates (assumes camera IP address 192.168.0.2):
 
+  - with Network Manager:
+
   ```none
   EN0=mgbe0_0
   sudo nmcli con add con-name hololink-$EN0 ifname $EN0 type ethernet ip4 192.168.0.101/24
   sudo nmcli connection modify hololink-$EN0 +ipv4.routes 192.168.0.2/32
   sudo nmcli connection up hololink-$EN0
+  ```
+
+  - Without Network manager
+
+  ```none
+  EN0=mgbe0_0
+  sudo ip link set dev $EN0 up
+  sudo ip addr add 192.168.0.101/24 dev $EN0
+  sudo ip route add 192.168.0.2/32 dev $EN0
   ```
 
 - Obtain and build holoscan sensor bridge:
