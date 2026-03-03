@@ -4,7 +4,7 @@
 # pre-installed version or fetching it via FetchContent.
 
 include_guard(GLOBAL)
-set(HOLOLINK_PYBIND11_VERSION "2.13.6")
+set(HOLOLINK_PYBIND11_VERSION "2.11.1")
 
 # Already exists?
 if(TARGET pybind11::pybind11)

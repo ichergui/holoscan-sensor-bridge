@@ -15,75 +15,79 @@
 
 set(EXAMPLE_INSTALL_TARGETS)
 if(NOT HOLOLINK_BUILD_ONLY_NATIVE)
+if(HOLOLINK_BUILD_ROCE)
+  add_executable(imx274_player
+    imx274_player.cpp
+    )
 
-include(hololink_deps/pybind11)
+  add_test(NAME imx274_player_test
+            COMMAND imx274_player --frame-limit=10 --headless
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+  set_tests_properties(imx274_player_test PROPERTIES
+                        FAIL_REGULAR_EXPRESSION "ERROR;\\[error\\]")
 
-add_executable(imx274_player
-  imx274_player.cpp
-  )
+  target_link_libraries(imx274_player
+    PRIVATE
+      hololink
+      hololink::operators::csi_to_bayer
+      hololink::operators::image_processor
+      hololink::operators::roce_receiver
+      hololink::sensors::native_imx274_camera_sensor
+      holoscan::core
+      holoscan::ops::bayer_demosaic
+      holoscan::ops::holoviz
+    )
 
-add_test(NAME imx274_player_test
-          COMMAND imx274_player --frame-limit=10 --headless
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-set_tests_properties(imx274_player_test PROPERTIES
-                      FAIL_REGULAR_EXPRESSION "ERROR;\\[error\\]")
+  list(APPEND EXAMPLE_INSTALL_TARGETS imx274_player)
+endif() # HOLOLINK_BUILD_ROCE
 
-target_link_libraries(imx274_player
-  PRIVATE
-    hololink
-    hololink::operators::csi_to_bayer
-    hololink::operators::image_processor
-    hololink::operators::roce_receiver
-    hololink::sensors::native_imx274_camera_sensor
-    holoscan::core
-    holoscan::ops::bayer_demosaic
-    holoscan::ops::holoviz
-  )
+if(HOLOLINK_BUILD_SOCKET)
+  add_executable(linux_imx274_player
+    linux_imx274_player.cpp
+    )
 
-list(APPEND EXAMPLE_INSTALL_TARGETS imx274_player)
+  add_test(NAME linux_imx274_player_test
+            COMMAND linux_imx274_player --frame-limit=10 --headless
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+  set_tests_properties(linux_imx274_player_test PROPERTIES
+                        FAIL_REGULAR_EXPRESSION "ERROR;\\[error\\]")
 
-add_executable(linux_imx274_player
-  linux_imx274_player.cpp
-  )
+  include(hololink_deps/pybind11)
+  target_link_libraries(linux_imx274_player
+    PRIVATE
+      hololink
+      hololink::operators::csi_to_bayer
+      hololink::operators::image_processor
+      hololink::operators::linux_receiver_op
+      holoscan::core
+      holoscan::ops::bayer_demosaic
+      holoscan::ops::holoviz
+      holoscan::pybind11
+      pybind11::embed
+    )
 
-add_test(NAME linux_imx274_player_test
-          COMMAND linux_imx274_player --frame-limit=10 --headless
-          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-set_tests_properties(linux_imx274_player_test PROPERTIES
-                      FAIL_REGULAR_EXPRESSION "ERROR;\\[error\\]")
+  list(APPEND EXAMPLE_INSTALL_TARGETS linux_imx274_player)
+endif() # HOLOLINK_BUILD_SOCKET
 
-target_link_libraries(linux_imx274_player
-  PRIVATE
-    hololink
-    hololink::operators::csi_to_bayer
-    hololink::operators::image_processor
-    hololink::operators::linux_receiver_op
-    holoscan::core
-    holoscan::ops::bayer_demosaic
-    holoscan::ops::holoviz
-    holoscan::pybind11
-    pybind11::embed
-  )
+if(HOLOLINK_BUILD_ROCE)
+  add_executable(vb1940_player
+    vb1940_player.cpp
+    )
 
-list(APPEND EXAMPLE_INSTALL_TARGETS linux_imx274_player)
+  target_link_libraries(vb1940_player
+    PRIVATE
+      hololink
+      hololink::operators::csi_to_bayer
+      hololink::operators::image_processor
+      hololink::operators::roce_receiver
+      hololink::sensors::native_vb1940_camera_sensor
+      holoscan::core
+      holoscan::ops::bayer_demosaic
+      holoscan::ops::holoviz
+    )
 
-add_executable(vb1940_player
-  vb1940_player.cpp
-  )
-
-target_link_libraries(vb1940_player
-  PRIVATE
-    hololink
-    hololink::operators::csi_to_bayer
-    hololink::operators::image_processor
-    hololink::operators::roce_receiver
-    hololink::sensors::native_vb1940_camera_sensor
-    holoscan::core
-    holoscan::ops::bayer_demosaic
-    holoscan::ops::holoviz
-  )
-
-list(APPEND EXAMPLE_INSTALL_TARGETS vb1940_player)
+  list(APPEND EXAMPLE_INSTALL_TARGETS vb1940_player)
+endif() # HOLOLINK_BUILD_ROCE
 
 if(HOLOLINK_BUILD_FUSA)
   add_executable(fusa_coe_imx274_player
@@ -121,46 +125,49 @@ if(HOLOLINK_BUILD_FUSA)
     )
 
   list(APPEND EXAMPLE_INSTALL_TARGETS fusa_coe_vb1940_player)
-endif()
+endif() # HOLOLINK_BUILD_FUSA
 
-add_executable(single_network_stereo_vb1940_player
-  single_network_stereo_vb1940_player.cpp
+if(HOLOLINK_BUILD_ROCE)
+  include(hololink_deps/pybind11)
+  add_executable(single_network_stereo_vb1940_player
+    single_network_stereo_vb1940_player.cpp
+    )
+
+  target_link_libraries(single_network_stereo_vb1940_player
+    PRIVATE
+      hololink
+      hololink::operators::csi_to_bayer
+      hololink::operators::image_processor
+      hololink::operators::roce_receiver
+      hololink::sensors::native_vb1940_camera_sensor
+      holoscan::core
+      holoscan::ops::bayer_demosaic
+      holoscan::ops::holoviz
+    )
+
+  list(APPEND EXAMPLE_INSTALL_TARGETS single_network_stereo_vb1940_player)
+
+  # Signal Generator sample app
+  add_executable(signal_generator
+    signal_generator.cpp
   )
 
-target_link_libraries(single_network_stereo_vb1940_player
-  PRIVATE
-    hololink
-    hololink::operators::csi_to_bayer
-    hololink::operators::image_processor
-    hololink::operators::roce_receiver
-    hololink::sensors::native_vb1940_camera_sensor
-    holoscan::core
-    holoscan::ops::bayer_demosaic
-    holoscan::ops::holoviz
+  target_link_libraries(signal_generator
+    PRIVATE
+      hololink
+      hololink::core
+      hololink::operators::iq_dec
+      hololink::operators::iq_enc
+      hololink::operators::roce_receiver
+      hololink::operators::roce_transmitter
+      hololink::operators::sig_gen
+      hololink::operators::sig_viewer
+      hololink::operators::udp_transmitter
+      holoscan::core
   )
 
-list(APPEND EXAMPLE_INSTALL_TARGETS single_network_stereo_vb1940_player)
-
-# Signal Generator sample app
-add_executable(signal_generator
-  signal_generator.cpp
-)
-
-target_link_libraries(signal_generator
-  PRIVATE
-    hololink
-    hololink::core
-    hololink::operators::iq_dec
-    hololink::operators::iq_enc
-    hololink::operators::roce_receiver
-    hololink::operators::roce_transmitter
-    hololink::operators::sig_gen
-    hololink::operators::sig_viewer
-    hololink::operators::udp_transmitter
-    holoscan::core
-)
-
-list(APPEND EXAMPLE_INSTALL_TARGETS signal_generator)
+  list(APPEND EXAMPLE_INSTALL_TARGETS signal_generator)
+endif() # HOLOLINK_BUILD_ROCE
 
 if(HOLOLINK_BUILD_SIPL)
   add_executable(sipl_player
@@ -182,24 +189,26 @@ if(HOLOLINK_BUILD_SIPL)
   list(APPEND EXAMPLE_INSTALL_TARGETS sipl_player)
 endif() # HOLOLINK_BUILD_SIPL
 
-add_executable(linux_single_network_stereo_imx274_player
-  linux_single_network_stereo_imx274_player.cpp
-  )
+if(HOLOLINK_BUILD_SOCKET)
+  add_executable(linux_single_network_stereo_imx274_player
+    linux_single_network_stereo_imx274_player.cpp
+    )
 
-target_link_libraries(linux_single_network_stereo_imx274_player
-  PRIVATE
-    hololink
-    hololink::operators::csi_to_bayer
-    hololink::operators::image_processor
-    hololink::operators::linux_receiver_op
-    hololink::sensors::native_imx274_camera_sensor
-    holoscan::core
-    holoscan::ops::bayer_demosaic
-    holoscan::ops::holoviz
-  )
+  target_link_libraries(linux_single_network_stereo_imx274_player
+    PRIVATE
+      hololink
+      hololink::operators::csi_to_bayer
+      hololink::operators::image_processor
+      hololink::operators::linux_receiver_op
+      hololink::sensors::native_imx274_camera_sensor
+      holoscan::core
+      holoscan::ops::bayer_demosaic
+      holoscan::ops::holoviz
+    )
 
-list(APPEND EXAMPLE_INSTALL_TARGETS linux_single_network_stereo_imx274_player)
+  list(APPEND EXAMPLE_INSTALL_TARGETS linux_single_network_stereo_imx274_player)
 
+endif() # HOLOLINK_BUILD_SOCKET
 
 endif() # NOT HOLOLINK_BUILD_ONLY_NATIVE
 
@@ -216,7 +225,7 @@ list(APPEND EXAMPLE_INSTALL_FILES
      sipl_config/vb1940_single.json)
 endif()
 
-if(NOT HOLOLINK_BUILD_ONLY_NATIVE)
+if(NOT HOLOLINK_BUILD_ONLY_NATIVE AND HOLOLINK_BUILD_PYTHON)
 list(APPEND EXAMPLE_INSTALL_FILES
     body_pose_estimation.py
     distributed_imx274_player.py

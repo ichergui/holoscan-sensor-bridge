@@ -33,7 +33,7 @@ target_link_libraries(sig_viewer
     cufft
     hololink
     holoscan::core
-    holoscan::viz::imgui
+    holoviz_imgui
 )
 
 # Installation of the sig_viewer operator

@@ -32,7 +32,7 @@ target_link_libraries(iq_dec
   PRIVATE
     hololink
     holoscan::core
-    holoscan::viz::imgui
+    holoviz_imgui
 )
 
 # Installation of the iq_dec operator

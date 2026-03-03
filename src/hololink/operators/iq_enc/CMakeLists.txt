@@ -32,7 +32,7 @@ target_link_libraries(iq_enc
   PRIVATE
     hololink
     holoscan::core
-    holoscan::viz::imgui
+    holoviz_imgui
 )
 
 # Installation of the iq_enc operator

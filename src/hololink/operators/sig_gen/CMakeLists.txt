@@ -48,7 +48,7 @@ target_link_libraries(sig_gen
     hololink
     hololink::expr_eval
     holoscan::core
-    holoscan::viz::imgui
+    holoviz_imgui
 )
 
 # Installation of the sig_gen operator

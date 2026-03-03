@@ -4,7 +4,7 @@
 # version or fetching it via FetchContent.
 
 include_guard(GLOBAL)
-set(HOLOLINK_GTEST_VERSION "1.17.0")
+set(HOLOLINK_GTEST_VERSION "1.14.0")
 
 # Already exists?
 if(TARGET GTest::gtest)
