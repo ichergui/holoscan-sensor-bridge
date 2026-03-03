@@ -24,9 +24,6 @@
 namespace {
 
 const char* source = R"(
-#include <device_atomic_functions.h>
-#include <cooperative_groups.h>
-
 extern "C" {
 
 // bayer component offsets
@@ -103,10 +100,7 @@ __global__ void histogram(const unsigned short *in,
         }
     }
 
-    // handle to thread block group
-    cooperative_groups::thread_block cta = cooperative_groups::this_thread_block();
-
-    cooperative_groups::sync(cta);
+    __syncthreads();
 
     // cycle through the entire data set, update subhistograms for each warp
     unsigned int *const s_warp_hist = s_hist + (threadIdx.x >> LOG2_WARP_SIZE) * HISTOGRAM_BIN_COUNT * CHANNELS;
@@ -119,7 +113,7 @@ __global__ void histogram(const unsigned short *in,
     }
 
     // Merge per-warp histograms into per-block and write to global memory
-    cooperative_groups::sync(cta);
+    __syncthreads();
 
     if (threadIdx.y == 0)
     {
