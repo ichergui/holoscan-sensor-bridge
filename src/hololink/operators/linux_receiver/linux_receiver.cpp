@@ -30,8 +30,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <infiniband/opcode.h>
-
 #include <hololink/common/cuda_helper.hpp>
 #include <hololink/core/deserializer.hpp>
 #include <hololink/core/hololink.hpp>
@@ -39,6 +37,8 @@
 #include <hololink/core/networking.hpp>
 #include <hololink/core/nvtx_trace.hpp>
 
+#define OPCODE_UC_RDMA_WRITE_ONLY (0x2A)
+#define OPCODE_UC_RDMA_WRITE_ONLY_WITH_IMMEDIATE (0x2B)
 #define NUM_OF(x) (sizeof(x) / sizeof(x[0]))
 
 namespace hololink::operators {
@@ -229,7 +229,7 @@ void LinuxReceiver::run()
             uint32_t rkey = 0;
             uint32_t size = 0;
             const uint8_t* content = NULL;
-            if ((opcode == IBV_OPCODE_UC_RDMA_WRITE_ONLY)
+            if ((opcode == OPCODE_UC_RDMA_WRITE_ONLY)
                 && deserializer.next_uint64_be(address)
                 && deserializer.next_uint32_be(rkey)
                 && deserializer.next_uint32_be(size)
@@ -245,7 +245,7 @@ void LinuxReceiver::run()
             }
 
             uint32_t imm_data = 0;
-            if ((opcode == IBV_OPCODE_UC_RDMA_WRITE_ONLY_WITH_IMMEDIATE)
+            if ((opcode == OPCODE_UC_RDMA_WRITE_ONLY_WITH_IMMEDIATE)
                 && deserializer.next_uint64_be(address)
                 && deserializer.next_uint32_be(rkey)
                 && deserializer.next_uint32_be(size)
