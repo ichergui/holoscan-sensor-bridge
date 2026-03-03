@@ -37,7 +37,17 @@ target_link_libraries(fusa_coe_capture
 
 target_include_directories(fusa_coe_capture
   PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../..
-    /usr/src/jetson_sipl_api/sipl/fusa/include
-    /usr/src/jetson_sipl_api/sipl/include/nvsci
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
+
+# Installation of the fusa_coe_capture operator
+set_target_properties(fusa_coe_capture PROPERTIES EXPORT_NAME operators::fusa_coe_capture)
+install(TARGETS fusa_coe_capture
+        EXPORT HololinkTargets
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        COMPONENT hololink-operators)
+
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/fusa_coe_capture.hpp
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hololink/operators/fusa_coe_capture
+        COMPONENT hololink-operators)
